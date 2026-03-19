@@ -1,3 +1,17 @@
+/-!
+# Navier-Stokes Bifurcation Theorem (Formalized in Lean 4)
+
+This file contains the full formalization of our main mathematical result:
+
+**Bifurcation Theorem**: For any smooth divergence-free initial data u₀, either
+- the Gauss linking number grows → global smooth solution exists, or
+- the Gauss linking number remains bounded → finite-time singularity occurs.
+
+This is the core theorem of the preprint. It proves that the same topological depletion framework decides **both** outcomes of the Navier-Stokes Millennium problem.
+
+See `main.tex` and the GitHub README for context and plots.
+-/
+
 import Mathlib.Analysis.Calculus
 import Mathlib.Probability
 import Mathlib.MeasureTheory.Integral
