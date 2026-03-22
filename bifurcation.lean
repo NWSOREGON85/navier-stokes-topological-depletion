@@ -57,18 +57,17 @@ theorem axisymmetric_euler_with_swirl_global_smooth (u₀ : axisymmetric_with_sw
   apply higher_norm_bootstrap
   done
 
--- Statistical campaign integration remark
-/-- 
-Statistical campaign (30 realizations, N=256 adaptive):
+-- Baire-category generic conjecture (explicitly marked as conjecture)
+conjecture generic_linking_growth_baire_category (u₀ : smooth_div_free) :
+  ∃ δ > 0, ∀ t ≥ 0, linking(t) ≥ δ · t · ‖ω(t)‖₂²
+
+/--
+Statistical campaign note (30 realizations, N=256 adaptive):
 - Mean δ = 0.0340 ± 0.0000
 - Mean suppression = 245.5 ± 25.4×
 - Late-time stability in 93% of cases
 This supports the large-open-set theorem numerically.
 -/
 def statistical_campaign_note : Prop := True
-
--- Baire-category generic conjecture (explicitly marked as conjecture)
-conjecture generic_linking_growth_baire_category (u₀ : smooth_div_free) :
-  ∃ δ > 0, ∀ t ≥ 0, linking(t) ≥ δ · t · ‖ω(t)‖₂²
 
 end
