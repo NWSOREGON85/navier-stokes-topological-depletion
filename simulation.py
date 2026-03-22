@@ -5,18 +5,18 @@ import time
 
 os.makedirs('plots', exist_ok=True)
 
-# ==================== PARAMETERS (v4.0 - Full Stochastic + Dynamic Proxies) ====================
-N_FIL = 256
+# ==================== PARAMETERS (v5.0 - High-Res + Timer + Batching) ====================
+N_FIL = 512
 NUM_FILAMENTS = 12
 NUM_REALIZATIONS = 30
+BATCH_SIZE = 10
 alpha = 1.22
 steps = 300
 dt = 0.002
 core_base = 0.08
-nu = 0.001          # viscosity
-eps = 1.0           # noise strength
+nu = 0.001
+eps = 1.0
 
-# Multi-topological coefficients
 beta_tb = 0.8
 gamma_kh = 0.6
 delta_sft = 0.45
@@ -85,18 +85,13 @@ def generate_generic_data():
     return filaments, Gamma_list
 
 def dynamic_topological_proxies(filaments, L, E):
-    # Dynamic TB (Thurston-Bennequin ≈ total curvature)
     curv = 0.0
     for r in filaments:
         dl = get_dl(r)
         d2l = get_dl(dl)
         curv += np.sum(np.linalg.norm(np.cross(dl, d2l), axis=1))
     TB = curv / 1000.0
-    
-    # Dynamic Khovanov span proxy
     Kh = L * np.log(1 + E) * 0.3
-    
-    # Dynamic SFT action proxy (∫ κ² ds)
     SFT = 0.0
     for r in filaments:
         dl = get_dl(r)
@@ -104,10 +99,7 @@ def dynamic_topological_proxies(filaments, L, E):
         kappa2 = np.sum(np.linalg.norm(np.cross(dl, d2l), axis=1)**2)
         SFT += kappa2
     SFT /= 10000.0
-    
-    # Dynamic neural charge (simple learned proxy)
     Q = 0.8 * np.exp(-0.01 * E) + 0.2 * np.random.randn()
-    
     return TB, Kh, SFT, Q
 
 def multi_topological_weight(L, TB, Kh, SFT, Q):
@@ -118,82 +110,73 @@ def run_single_generic(with_depletion=True):
     linking_hist = []
     enstrophy_hist = []
     t_hist = []
-   
     for step in range(steps):
         t = step * dt
         t_hist.append(t)
-       
         filaments = [adaptive_regrid(f) for f in filaments]
-       
         L = compute_gauss_linking(filaments, Gamma_list)
         E = enstrophy_proxy(filaments, Gamma_list)
         TB, Kh, SFT, Q = dynamic_topological_proxies(filaments, L, E)
         linking_hist.append(L)
-       
         scale = multi_topological_weight(L, TB, Kh, SFT, Q) if with_depletion else 1.0
-       
         u = biot_savart_induced(filaments, Gamma_list, core_base)
-       
-        # === STOCHASTIC SDE NOISE TERM ===
         noise = np.random.randn(*u.shape) * np.sqrt(2 * nu * eps * dt)
         u_stoch = u + noise
-       
         idx = 0
         for i in range(len(filaments)):
             n = len(filaments[i])
             filaments[i] += dt * u_stoch[idx:idx+n] * scale
             idx += n
-       
         enstrophy_hist.append(E)
-   
     return np.array(t_hist), np.array(enstrophy_hist), np.array(linking_hist)
 
-def run_statistical_campaign():
-    print(f"Starting stochastic campaign v4.0 ({NUM_REALIZATIONS} realizations)...\n")
-    start_time = time.time()
+def run_statistical_campaign(start_batch=0):
+    print(f"Starting high-resolution stochastic campaign v5.0 (Batches of {BATCH_SIZE})...\n")
+    overall_start = time.perf_counter()
     deltas = []
     suppressions = []
-   
-    for r in range(NUM_REALIZATIONS):
-        print(f" Run {r+1:2d}/{NUM_REALIZATIONS}...", end=" ")
-        t0 = time.time()
-        
-        t, E_with, L_with = run_single_generic(with_depletion=True)
-        _, E_without, _ = run_single_generic(with_depletion=False)
-       
-        delta = (L_with[-1] - L_with[0]) / (t[-1] * np.mean(E_with))
-        supp = np.max(E_without) / np.max(E_with) if np.max(E_with) > 0 else 1.0
-       
-        deltas.append(delta)
-        suppressions.append(supp)
-        print(f"δ={delta:.4f}, supp={supp:.1f}×  ({time.time()-t0:.1f}s)")
-   
+    num_batches = (NUM_REALIZATIONS + BATCH_SIZE - 1) // BATCH_SIZE
+    for b in range(start_batch, num_batches):
+        batch_start = time.perf_counter()
+        batch_realizations = min(BATCH_SIZE, NUM_REALIZATIONS - b * BATCH_SIZE)
+        print(f"Batch {b+1}/{num_batches} ({batch_realizations} realizations) starting...\n")
+        for r in range(batch_realizations):
+            global_r = b * BATCH_SIZE + r
+            print(f"  Run {global_r+1:2d}/{NUM_REALIZATIONS}...", end=" ")
+            t0 = time.perf_counter()
+            t, E_with, L_with = run_single_generic(with_depletion=True)
+            _, E_without, _ = run_single_generic(with_depletion=False)
+            delta = (L_with[-1] - L_with[0]) / (t[-1] * np.mean(E_with))
+            supp = np.max(E_without) / np.max(E_with) if np.max(E_with) > 0 else 1.0
+            deltas.append(delta)
+            suppressions.append(supp)
+            elapsed = time.perf_counter() - t0
+            print(f"δ={delta:.4f}, supp={supp:.1f}×  ({elapsed:.1f}s)")
+        batch_time = time.perf_counter() - batch_start
+        print(f"  Batch {b+1} complete — {batch_time/60:.1f} minutes\n")
     mean_delta = np.mean(deltas)
     std_delta = np.std(deltas)
     mean_supp = np.mean(suppressions)
     std_supp = np.std(suppressions)
-    total_time = time.time() - start_time
-   
-    print("\n=== STATISTICAL RESULTS (v4.0 Stochastic) ===")
+    total_time = time.perf_counter() - overall_start
+    print("=== FINAL STATISTICAL RESULTS (v5.0 High-Res) ===")
     print(f"Observed δ growth rate : {mean_delta:.4f} ± {std_delta:.4f}")
     print(f"Suppression factor     : {mean_supp:.1f} ± {std_supp:.1f}×")
     print(f"Total runtime          : {total_time/60:.1f} minutes")
-   
     plt.figure(figsize=(10,6))
     plt.hist(suppressions, bins=15, alpha=0.7, color='blue', edgecolor='black')
     plt.axvline(mean_supp, color='red', linestyle='--', label=f'Mean = {mean_supp:.1f}×')
-    plt.title('Distribution of Suppression Factors (30 Stochastic Realizations)')
+    plt.title('Distribution of Suppression Factors (30 High-Res Realizations)')
     plt.xlabel('Suppression Factor')
     plt.ylabel('Count')
     plt.legend()
     plt.grid(True, alpha=0.3)
     plt.tight_layout()
-    plt.savefig('plots/statistical_suppression_distribution_v4.png', dpi=400)
-    print("Plot saved: plots/statistical_suppression_distribution_v4.png")
-   
+    plt.savefig('plots/statistical_suppression_distribution_v5.png', dpi=400)
+    print("Plot saved: plots/statistical_suppression_distribution_v5.png")
     return mean_delta, std_delta, mean_supp, std_supp
 
 if __name__ == "__main__":
-    print("Running simulation.py (v4.0 — full stochastic SDE + dynamic proxies)")
-    run_statistical_campaign()
-    print("\nStep 6 complete — stochastic multi-topological hybrid active!")
+    print("Running simulation.py (v5.0 — high-res stochastic with timer + batching)")
+    run_statistical_campaign(start_batch=0)
+    print("\nFull campaign complete — project ready for final submission!")
