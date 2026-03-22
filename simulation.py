@@ -1,21 +1,23 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import os
-
 os.makedirs('plots', exist_ok=True)
 
 # ==================== PARAMETERS (v2.9 - Hybrid Filament-Particle) ====================
-N_FIL = 256                    # points per filament
-N_PART = 50000                 # vortex particles for far-field
+N_FIL = 256 # points per filament
+NUM_FILAMENTS = 12          # <-- added for completeness (v3.0)
+N_PART = 50000 # vortex particles for far-field
 NUM_REALIZATIONS = 30
 alpha = 1.22
+steps = 300                 # <-- added for completeness (v3.0)
+dt = 0.002                  # <-- added for completeness (v3.0)
+core_base = 0.08            # <-- added for completeness (v3.0)
 
 # Multi-topological hybrid coefficients
 beta_tb = 0.8
 gamma_kh = 0.6
 delta_sft = 0.45
 epsilon_neural = 0.3
-
 THEORETICAL_DELTA = 0.0672
 
 def get_dl(r):
@@ -83,60 +85,60 @@ def run_single_generic(with_depletion=True):
     linking_hist = []
     enstrophy_hist = []
     t_hist = []
-    
+   
     for step in range(steps):
         t = step * dt
         t_hist.append(t)
-        
+       
         for i in range(len(filaments)):
             filaments[i] = adaptive_regrid(filaments[i])
-        
+       
         L = compute_gauss_linking(filaments, Gamma_list)
         linking_hist.append(L)
-        
+       
         scale = multi_topological_weight(L) if with_depletion else 1.0
-        
+       
         all_pts = np.vstack(filaments)
         u = biot_savart_induced(filaments, Gamma_list, core_base)
-        
+       
         idx = 0
         for i in range(len(filaments)):
             n = len(filaments[i])
             filaments[i] += dt * u[idx:idx+n] * scale
             idx += n
-        
+       
         E = enstrophy_proxy(filaments, Gamma_list)
         enstrophy_hist.append(E)
-    
+   
     return np.array(t_hist), np.array(enstrophy_hist), np.array(linking_hist)
 
 def run_statistical_campaign():
     print(f"Starting statistical campaign ({NUM_REALIZATIONS} realizations, N={N_FIL})...\n")
     deltas = []
     suppressions = []
-    
+   
     for r in range(NUM_REALIZATIONS):
-        print(f"  Run {r+1}/{NUM_REALIZATIONS}...", end=" ")
+        print(f" Run {r+1}/{NUM_REALIZATIONS}...", end=" ")
         t, E_with, L_with = run_single_generic(with_depletion=True)
         _, E_without, _ = run_single_generic(with_depletion=False)
-        
+       
         delta = (L_with[-1] - L_with[0]) / (t[-1] * np.mean(E_with))
         supp = np.max(E_without) / np.max(E_with) if np.max(E_with) > 0 else 1.0
-        
+       
         deltas.append(delta)
         suppressions.append(supp)
         print(f"δ={delta:.4f}, supp={supp:.1f}×")
-    
+   
     mean_delta = np.mean(deltas)
     std_delta = np.std(deltas)
     mean_supp = np.mean(suppressions)
     std_supp = np.std(suppressions)
-    
-    print("\n=== STATISTICAL RESULTS (v2.9) ===")
+   
+    print("\n=== STATISTICAL RESULTS (v3.0) ===")
     print(f"Observed δ growth rate : {mean_delta:.4f} ± {std_delta:.4f}")
     print(f"Theoretical lower bound: {THEORETICAL_DELTA}")
-    print(f"Suppression factor     : {mean_supp:.1f} ± {std_supp:.1f}×")
-    
+    print(f"Suppression factor : {mean_supp:.1f} ± {std_supp:.1f}×")
+   
     plt.figure(figsize=(10,6))
     plt.hist(suppressions, bins=15, alpha=0.7, color='blue', edgecolor='black')
     plt.axvline(mean_supp, color='red', linestyle='--', label=f'Mean = {mean_supp:.1f}×')
@@ -148,10 +150,10 @@ def run_statistical_campaign():
     plt.tight_layout()
     plt.savefig('plots/statistical_suppression_distribution.png', dpi=400)
     print("Plot saved: plots/statistical_suppression_distribution.png")
-    
+   
     return mean_delta, std_delta, mean_supp, std_supp
 
 if __name__ == "__main__":
-    print("Running simulation.py (v2.9) — multi-topological hybrid")
+    print("Running simulation.py (v3.0) — multi-topological hybrid")
     run_statistical_campaign()
     print("\nAll done! Full multi-topological hybrid active.")
