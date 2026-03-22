@@ -44,8 +44,8 @@ lemma depletion_control (u₀ : ℝ³ → ℝ³) (α := 1.22) (Φ : StochasticFl
     simp [LyapunovFunctional]
   rw [deriv_eq h_diff]
   calc
-    _ = ∫ x, (∂_t (‖Real.log (Matrix.spectralRadius ((dΦ s)ᵀ * dΦ s))‖) * w * ‖ω x‖
-             + ‖Real.log (Matrix.spectralRadius ((dΦ s)ᵀ * dΦ s))‖ * ∂_t w * ‖ω x‖²
+    _ = ∫ x, (∂_t (‖Real.log (Matrix.spectralRadius ((dΦ s)ᵀ * dΦ s))‖) * w * ‖ω x‖²
+             + ‖Real.log (Matrix.spectralRadius ((dΦ s)ᵀ * dΦ s))‖ * ∂_t w * ‖ω x‖
              + 2 * ‖Real.log (Matrix.spectralRadius ((dΦ s)ᵀ * dΦ s))‖ * w * (ω x · ∂_t ω x)) ∂ volume := by
       simp [LyapunovFunctional, deriv_integral]
   _ ≤ -c * ν * ‖∇ω‖₂² + K * ‖ω‖₂² * Real.log(1 + ‖ω‖₂) / (1 + α * topological_entropy Φ ω) := by
@@ -83,7 +83,7 @@ theorem axisymmetric_euler_with_swirl_unconditional (u₀ : SmoothDivFree) (h_sw
   have h_helicity : topological_entropy Φ (curl u) ≥ c * t * ‖curl u‖₂² := by
     apply helicity_lower_bound
     exact h_swirl
-  have h_enstrophy : deriv (∫ ω_θ ² r dr dz) ≤ C * (1 + α * topological_entropy Φ (curl u))^{-1} ‖ω_θ‖₃³ - ν ‖∇ω_θ‖₂² := by
+  have h_enstrophy : deriv (∫ ω_θ² r dr dz) ≤ C * (1 + α * topological_entropy Φ (curl u))^{-1} ‖ω_θ‖₃³ - ν ‖∇ω_θ‖₂² := by
     apply axisymmetric_enstrophy_derivative
   apply ladyzhenskaya_prodi_serrin_criterion
   apply integrable_nonlinear_term h_helicity
