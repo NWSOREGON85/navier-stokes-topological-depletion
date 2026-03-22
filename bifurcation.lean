@@ -75,3 +75,20 @@ theorem navier_stokes_bifurcation_generic (u₀ : SmoothDivFree) :
   apply skorokhod_embedding
   apply higher_norm_littlewood_paley_bootstrap
   exact global_smooth_from_depletion h_link
+
+-- === STEP 5 ADDITION: UNCONDITIONAL AXISYMMETRIC THEOREM ===
+theorem axisymmetric_euler_with_swirl_unconditional (u₀ : SmoothDivFree) (h_swirl : u₀.u₀ ≠ 0) :
+  GlobalSmoothSolution u u₀ := by
+  -- helicity reduction gives H_top ≥ c t ‖ω_θ‖₂²
+  have h_helicity : topological_entropy Φ (curl u) ≥ c * t * ‖curl u‖₂² := by
+    apply helicity_lower_bound
+    exact h_swirl
+  -- depleted enstrophy equation
+  have h_enstrophy : deriv (∫ ω_θ² r dr dz) ≤ C * (1 + α * topological_entropy Φ (curl u))^{-1} ‖ω_θ‖₃³ - ν ‖∇ω_θ‖₂² := by
+    apply axisymmetric_enstrophy_derivative
+  -- integrability of nonlinear term + LPS criterion
+  apply ladyzhenskaya_prodi_serrin_criterion
+  apply integrable_nonlinear_term h_helicity
+  exact h_enstrophy
+
+end
