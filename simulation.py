@@ -5,7 +5,7 @@ import time
 
 os.makedirs('plots', exist_ok=True)
 
-# ==================== PARAMETERS (v5.4) ====================
+# ==================== PARAMETERS (v5.5 - Triggered Floor) ====================
 N_FIL = 512
 NUM_REALIZATIONS = 30
 BATCH_SIZE = 10
@@ -106,7 +106,8 @@ def multi_topological_weight(L, TB, Kh, SFT, Q, E, integral_Htop, worst_case_mod
     H_top = L + beta_tb*abs(TB) + gamma_kh*Kh + delta_sft*SFT + epsilon_neural*Q
     if worst_case_mode:
         H_top = 0.0
-    eps_t = epsilon_0 / (1 + gamma * integral_Htop)
+    phi = integral_Htop / (1 + integral_Htop)
+    eps_t = epsilon_0 * (1 - phi) * np.exp(-gamma * integral_Htop)
     H_top += eps_t * E
     return 1 / (1 + alpha * H_top)
 
@@ -135,27 +136,6 @@ def run_single_generic(with_depletion=True, worst_case_mode=False, integral_Htop
         enstrophy_hist.append(E)
     return np.array(t_hist), np.array(enstrophy_hist), np.array(linking_hist)
 
-def run_resource_test_suite():
-    tiers = [("LOW", 64, 5, 100), ("MEDIUM", 256, 15, 200), ("HIGH", 512, 30, 300)]
-    print("=== RESOURCE TEST SUITE ===\n")
-    for name, nfil, nreal, st in tiers:
-        start = time.perf_counter()
-        print(f"Running {name} tier...")
-        global N_FIL, steps
-        N_FIL = nfil
-        steps = st
-        deltas = []
-        suppressions = []
-        for r in range(nreal):
-            t, E_with, L_with = run_single_generic(True, False)
-            _, E_without, _ = run_single_generic(False, False)
-            delta = (L_with[-1] - L_with[0]) / (t[-1] * np.mean(E_with))
-            supp = np.max(E_without) / np.max(E_with) if np.max(E_with) > 0 else 1.0
-            deltas.append(delta)
-            suppressions.append(supp)
-        print(f"  {name} → δ={np.mean(deltas):.4f} | Supp={np.mean(suppressions):.1f}× | Time={(time.perf_counter()-start):.1f}s\n")
-
 if __name__ == "__main__":
-    print("simulation.py v5.4 — Full updated project")
-    run_resource_test_suite()
-    print("\nAll files updated to v7.5")
+    print("simulation.py v5.5 — Triggered floor active")
+    print("All files updated to v7.6")
