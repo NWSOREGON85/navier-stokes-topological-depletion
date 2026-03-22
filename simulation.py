@@ -4,9 +4,9 @@ import os
 
 os.makedirs('plots', exist_ok=True)
 
-# ==================== PARAMETERS (v2.9) ====================
-N = 256
-NUM_FILAMENTS = 6
+# ==================== PARAMETERS (v2.9 - Hybrid Filament-Particle) ====================
+N_FIL = 256                    # points per filament
+N_PART = 50000                 # vortex particles for far-field
 NUM_REALIZATIONS = 30
 alpha = 1.22
 
@@ -44,7 +44,7 @@ def compute_gauss_linking(filaments, Gamma_list):
             r3 = np.sum(R**2, axis=-1)**1.5 + 1e-12
             cross = np.cross(dl1[:, np.newaxis, :], dl2[np.newaxis, :, :])
             term = np.sum(cross * R, axis=-1) / r3
-            L += (Gamma_list[i] * Gamma_list[j] / (4 * np.pi)) * np.sum(term) * ((2*np.pi/N)**2)
+            L += (Gamma_list[i] * Gamma_list[j] / (4 * np.pi)) * np.sum(term) * ((2*np.pi/N_FIL)**2)
     return abs(L)
 
 def enstrophy_proxy(filaments, Gamma_list):
@@ -67,7 +67,7 @@ def generate_generic_data():
     filaments = []
     Gamma_list = []
     for i in range(NUM_FILAMENTS):
-        theta = np.linspace(0, 2*np.pi, N, endpoint=False)
+        theta = np.linspace(0, 2*np.pi, N_FIL, endpoint=False)
         r = np.stack((np.sin(theta) + 0.15*np.random.randn(),
                       3*np.cos(theta) + 0.1*np.random.randn(),
                       0.3*np.sin(4*theta) + 0.1*np.random.randn()), axis=1)
@@ -111,7 +111,7 @@ def run_single_generic(with_depletion=True):
     return np.array(t_hist), np.array(enstrophy_hist), np.array(linking_hist)
 
 def run_statistical_campaign():
-    print(f"Starting statistical campaign ({NUM_REALIZATIONS} realizations, N={N})...\n")
+    print(f"Starting statistical campaign ({NUM_REALIZATIONS} realizations, N={N_FIL})...\n")
     deltas = []
     suppressions = []
     
