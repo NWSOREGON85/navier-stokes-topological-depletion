@@ -94,7 +94,6 @@ def run_single_generic(with_depletion=True):
         L = compute_gauss_linking(filaments, Gamma_list)
         linking_hist.append(L)
         
-        # Multi-topological hybrid weight
         scale = multi_topological_weight(L) if with_depletion else 1.0
         
         all_pts = np.vstack(filaments)
