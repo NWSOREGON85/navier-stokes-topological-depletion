@@ -32,7 +32,7 @@ def LyapunovFunctional (α : ℝ) (Φ : StochasticFlowMap) (ω : ℝ³ → ℝ) 
 lemma depletion_control (u₀ : ℝ³ → ℝ³) (α := 1.22) :
   ∀ t ≥ 0, d/dt (LyapunovFunctional α Φ u(t)) ≤
     -c ν ‖∇ω‖² + K · ‖ω‖² log(1 + ‖ω‖) / (1 + α · linking) := by
-  sorry  -- (existing proof)
+  sorry
 
 lemma linking_grows_multi_topological (u₀ : smooth_div_free) :
   ∃ δ > 0, ∀ t ≥ 0, linking_eff(t) ≥ δ · t · ‖ω(t)‖₂² := by
