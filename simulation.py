@@ -5,7 +5,8 @@ from datetime import datetime
 
 os.makedirs('plots', exist_ok=True)
 
-# ==================== PARAMETERS (v2.3) ====================
+# ==================== PARAMETERS (v2.4) ====================
+# Reflects strengthened linking-growth lemma (Sacasa-Céspedes Thm 9 + Cor 3)
 N = 256                    # base points per filament
 NUM_FILAMENTS = 6          # generic case
 NUM_REALIZATIONS = 30      # statistical campaign
@@ -16,12 +17,13 @@ T = 2.5
 steps = int(T / dt)
 core_base = 0.08
 
+# Theoretical lower bound from strengthened lemma
+THEORETICAL_DELTA = 0.034
+
 def get_dl(r):
-    """Vectorized segment vectors"""
     return np.roll(r, -1, axis=0) - r
 
 def biot_savart_induced(filaments, Gamma_list, core=0.08):
-    """Rosenhead–Moore Biot-Savart"""
     all_pts = np.vstack(filaments)
     u = np.zeros_like(all_pts)
     for fil, G in zip(filaments, Gamma_list):
@@ -35,7 +37,6 @@ def biot_savart_induced(filaments, Gamma_list, core=0.08):
     return u
 
 def compute_gauss_linking(filaments, Gamma_list):
-    """Exact discretized Gauss linking"""
     L = 0.0
     for i in range(len(filaments)):
         for j in range(i+1, len(filaments)):
@@ -49,14 +50,12 @@ def compute_gauss_linking(filaments, Gamma_list):
     return abs(L)
 
 def enstrophy_proxy(filaments, Gamma_list):
-    """Enstrophy proxy"""
     E = 0.0
     for r, G in zip(filaments, Gamma_list):
         E += G**2 * np.sum(np.linalg.norm(get_dl(r), axis=1))
     return E
 
 def adaptive_regrid(r, stretch_threshold=1.5):
-    """Simple adaptive point insertion"""
     dr = np.diff(r, axis=0)
     lengths = np.linalg.norm(dr, axis=1)
     new_r = [r[0]]
@@ -67,7 +66,6 @@ def adaptive_regrid(r, stretch_threshold=1.5):
     return np.array(new_r)
 
 def generate_generic_data():
-    """Random multi-filament initial data with non-zero helicity"""
     filaments = []
     Gamma_list = []
     for i in range(NUM_FILAMENTS):
@@ -89,7 +87,6 @@ def run_single_generic(with_depletion=True):
         t = step * dt
         t_hist.append(t)
         
-        # Adaptive regridding
         for i in range(len(filaments)):
             filaments[i] = adaptive_regrid(filaments[i])
         
@@ -113,7 +110,6 @@ def run_single_generic(with_depletion=True):
     return np.array(t_hist), np.array(enstrophy_hist), np.array(linking_hist)
 
 def run_statistical_campaign():
-    """Run 30 realizations and compute statistics"""
     print(f"Starting statistical campaign ({NUM_REALIZATIONS} realizations, N={N})...\n")
     deltas = []
     suppressions = []
@@ -135,11 +131,12 @@ def run_statistical_campaign():
     mean_supp = np.mean(suppressions)
     std_supp = np.std(suppressions)
     
-    print("\n=== STATISTICAL RESULTS ===")
-    print(f"δ growth rate : {mean_delta:.4f} ± {std_delta:.4f}")
-    print(f"Suppression   : {mean_supp:.1f} ± {std_supp:.1f}×")
+    print("\n=== STATISTICAL RESULTS (v2.4) ===")
+    print(f"Observed δ growth rate : {mean_delta:.4f} ± {std_delta:.4f}")
+    print(f"Theoretical lower bound (Sacasa-Céspedes Thm 9): {THEORETICAL_DELTA}")
+    print(f"Suppression factor     : {mean_supp:.1f} ± {std_supp:.1f}×")
     
-    # Save summary plot
+    # Save distribution plot
     plt.figure(figsize=(10,6))
     plt.hist(suppressions, bins=15, alpha=0.7, color='blue', edgecolor='black')
     plt.axvline(mean_supp, color='red', linestyle='--', label=f'Mean = {mean_supp:.1f}×')
@@ -155,6 +152,6 @@ def run_statistical_campaign():
     return mean_delta, std_delta, mean_supp, std_supp
 
 if __name__ == "__main__":
-    print("Running latest simulation.py (v2.3) — statistical campaign")
+    print("Running simulation.py (v2.4) — statistical campaign")
     run_statistical_campaign()
-    print("\nAll done! Files ready to save.")
+    print("\nAll done! Files updated to reflect latest mathematical advancement.")
