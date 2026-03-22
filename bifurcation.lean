@@ -19,6 +19,7 @@ def multi_topological_hybrid (L : ℝ) (TB : ℝ) (Kh : ℝ) (SFT : ℝ) (Q : �
 
 def LyapunovFunctional (α : ℝ) (Φ : StochasticFlowMap) (ω : ℝ³ → ℝ) : ℝ :=
   ∫ x, (|log λ_max (C_t x)| / (1 + multi_topological_hybrid (GaussLinkingLocalized Φ ω x) TB Kh SFT Q)) * ‖ω x‖² dx
+  where C_t := (dΦ_t)ᵀ dΦ_t
 
 lemma linking_grows_multi_topological (u₀ : smooth_div_free) :
   ∃ δ > 0, ∀ t ≥ 0, linking_eff(t) ≥ δ · t · ‖ω(t)‖₂² := by
