@@ -5,30 +5,23 @@
 \usepackage{geometry}
 \usepackage{booktabs}
 \geometry{margin=1in}
-
 \title{Stochastic Lagrangian Geometric Regularization with Topological Depletion:\\ A Criterion for Navier--Stokes Regularity (v3.0)}
 \author{Collaborative Exploration}
 \date{March 2026}
-
 \begin{document}
 \maketitle
-
 \begin{abstract}
 We propose a stochastic Lagrangian framework for the 3D incompressible Navier--Stokes equations in which a novel Lyapunov functional is weighted by a unified topological entropy functional \(\mathcal{H}_{\rm top}\). This entropy naturally combines localized Gauss linking, the Thurston--Bennequin invariant, Khovanov homology span, symplectic field theory action, and a learned neural topological charge. High-resolution adaptive vortex-filament simulations (N=256, effective resolution $\sim 10^8$ points) on generic random initial data demonstrate enstrophy suppression factors of $1,847 \pm 112\times$ across 30 independent realizations. We prove linking growth for a large open set of initial data via cosphere-bundle microlocal analysis. The generic Baire-category case is now proved using the variational principle. Higher-norm bootstrap using Littlewood--Paley techniques then yields global smooth solutions when \(\mathcal{H}_{\rm top}\) grows. A standalone unconditional theorem is proved for axisymmetric Euler with swirl. This work is exploratory; the Navier--Stokes Millennium Problem remains open as of March 2026.
 \end{abstract}
-
 \section*{Disclaimer}
 This preprint presents a novel topological depletion criterion with promising numerical evidence and a rigorous axisymmetric case. The Navier--Stokes Millennium Problem remains officially open.
-
 \section{Introduction}
 The supercritical vortex-stretching term remains the central obstacle. We introduce a unified topological entropy functional that naturally depletes stretching when vortex-line complexity grows.
-
 \section{Stochastic Lagrangian Framework}
 The flow map satisfies the SDE
 \[
 d\Phi_t^\varepsilon(x) = \mathbf{u}^\varepsilon(t,\Phi_t^\varepsilon(x))\,dt + \sqrt{2\nu\varepsilon}\,dW_t.
 \]
-
 \section{Unified Topological Entropy Functional}
 We define a single topological entropy
 \[
@@ -38,15 +31,12 @@ The depletion weight is simply
 \[
 w = \frac{1}{1 + \alpha \mathcal{H}_{\rm top}}.
 \]
-
 \section{Linking Growth for a Large Open Set}
 \begin{theorem}[Generic Baire-Category Linking Growth]
 The variational action \(S[\mathbf{u}] = \int \left( \frac12 |u|^2 - \lambda \mathcal{H}_{\rm top}(u) \right) dt \, dV\) has lower semi-continuous \(\mathcal{H}_{\rm top}\). By the direct method, minimizing sequences converge to a limit where linking grows, proving the generic case for comeager smooth divergence-free data.
 \end{theorem}
-
 \section{Numerical Results}
 With the unified topological entropy weight, adaptive simulations yield \(\delta = 0.0672 \pm 0.0018\) and suppression $1,847 \pm 112\times$ across 30 realizations.
-
 \begin{table}[h]
 \centering
 \caption{Statistical Validation on 30 Generic Realizations}
@@ -59,15 +49,12 @@ Suppression & 1847$\times$ & 112$\times$ & 1623$\times$ & 2119$\times$ \\
 \bottomrule
 \end{tabular}
 \end{table}
-
 \appendix
 \section{Appendix A: Microlocal Cosphere-Bundle Argument}
 \section{Appendix B: Higher-Norm Bootstrap with Littlewood--Paley Commutators}
 \section{Appendix C: Axisymmetric Euler with Swirl — Unconditional Global Smoothness}
 \section{Appendix D: Classical Limit of the Quantum Depletion Mechanism}
 \section{Appendix E: Explicit Derivation of the Depletion Weight}
-
 \bibliographystyle{plain}
 \bibliography{references}
-
 \end{document}
