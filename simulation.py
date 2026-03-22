@@ -5,12 +5,13 @@ import time
 
 os.makedirs('plots', exist_ok=True)
 
-# ==================== PARAMETERS (v5.0 - High-Res + Timer + Batching) ====================
+# ==================== PARAMETERS (v5.4) ====================
 N_FIL = 512
-NUM_FILAMENTS = 12
 NUM_REALIZATIONS = 30
 BATCH_SIZE = 10
 alpha = 1.22
+epsilon_0 = 1e-3
+gamma = 0.5
 steps = 300
 dt = 0.002
 core_base = 0.08
@@ -21,7 +22,6 @@ beta_tb = 0.8
 gamma_kh = 0.6
 delta_sft = 0.45
 epsilon_neural = 0.3
-THEORETICAL_DELTA = 0.0672
 
 np.random.seed(42)
 
@@ -102,10 +102,15 @@ def dynamic_topological_proxies(filaments, L, E):
     Q = 0.8 * np.exp(-0.01 * E) + 0.2 * np.random.randn()
     return TB, Kh, SFT, Q
 
-def multi_topological_weight(L, TB, Kh, SFT, Q):
-    return 1 / (1 + alpha * L + beta_tb*abs(TB) + gamma_kh*Kh + delta_sft*SFT + epsilon_neural*Q)
+def multi_topological_weight(L, TB, Kh, SFT, Q, E, integral_Htop, worst_case_mode=False):
+    H_top = L + beta_tb*abs(TB) + gamma_kh*Kh + delta_sft*SFT + epsilon_neural*Q
+    if worst_case_mode:
+        H_top = 0.0
+    eps_t = epsilon_0 / (1 + gamma * integral_Htop)
+    H_top += eps_t * E
+    return 1 / (1 + alpha * H_top)
 
-def run_single_generic(with_depletion=True):
+def run_single_generic(with_depletion=True, worst_case_mode=False, integral_Htop=0.0):
     filaments, Gamma_list = generate_generic_data()
     linking_hist = []
     enstrophy_hist = []
@@ -118,7 +123,7 @@ def run_single_generic(with_depletion=True):
         E = enstrophy_proxy(filaments, Gamma_list)
         TB, Kh, SFT, Q = dynamic_topological_proxies(filaments, L, E)
         linking_hist.append(L)
-        scale = multi_topological_weight(L, TB, Kh, SFT, Q) if with_depletion else 1.0
+        scale = multi_topological_weight(L, TB, Kh, SFT, Q, E, integral_Htop, worst_case_mode) if with_depletion else 1.0
         u = biot_savart_induced(filaments, Gamma_list, core_base)
         noise = np.random.randn(*u.shape) * np.sqrt(2 * nu * eps * dt)
         u_stoch = u + noise
@@ -130,53 +135,27 @@ def run_single_generic(with_depletion=True):
         enstrophy_hist.append(E)
     return np.array(t_hist), np.array(enstrophy_hist), np.array(linking_hist)
 
-def run_statistical_campaign(start_batch=0):
-    print(f"Starting high-resolution stochastic campaign v5.0 (Batches of {BATCH_SIZE})...\n")
-    overall_start = time.perf_counter()
-    deltas = []
-    suppressions = []
-    num_batches = (NUM_REALIZATIONS + BATCH_SIZE - 1) // BATCH_SIZE
-    for b in range(start_batch, num_batches):
-        batch_start = time.perf_counter()
-        batch_realizations = min(BATCH_SIZE, NUM_REALIZATIONS - b * BATCH_SIZE)
-        print(f"Batch {b+1}/{num_batches} ({batch_realizations} realizations) starting...\n")
-        for r in range(batch_realizations):
-            global_r = b * BATCH_SIZE + r
-            print(f"  Run {global_r+1:2d}/{NUM_REALIZATIONS}...", end=" ")
-            t0 = time.perf_counter()
-            t, E_with, L_with = run_single_generic(with_depletion=True)
-            _, E_without, _ = run_single_generic(with_depletion=False)
+def run_resource_test_suite():
+    tiers = [("LOW", 64, 5, 100), ("MEDIUM", 256, 15, 200), ("HIGH", 512, 30, 300)]
+    print("=== RESOURCE TEST SUITE ===\n")
+    for name, nfil, nreal, st in tiers:
+        start = time.perf_counter()
+        print(f"Running {name} tier...")
+        global N_FIL, steps
+        N_FIL = nfil
+        steps = st
+        deltas = []
+        suppressions = []
+        for r in range(nreal):
+            t, E_with, L_with = run_single_generic(True, False)
+            _, E_without, _ = run_single_generic(False, False)
             delta = (L_with[-1] - L_with[0]) / (t[-1] * np.mean(E_with))
             supp = np.max(E_without) / np.max(E_with) if np.max(E_with) > 0 else 1.0
             deltas.append(delta)
             suppressions.append(supp)
-            elapsed = time.perf_counter() - t0
-            print(f"δ={delta:.4f}, supp={supp:.1f}×  ({elapsed:.1f}s)")
-        batch_time = time.perf_counter() - batch_start
-        print(f"  Batch {b+1} complete — {batch_time/60:.1f} minutes\n")
-    mean_delta = np.mean(deltas)
-    std_delta = np.std(deltas)
-    mean_supp = np.mean(suppressions)
-    std_supp = np.std(suppressions)
-    total_time = time.perf_counter() - overall_start
-    print("=== FINAL STATISTICAL RESULTS (v5.0 High-Res) ===")
-    print(f"Observed δ growth rate : {mean_delta:.4f} ± {std_delta:.4f}")
-    print(f"Suppression factor     : {mean_supp:.1f} ± {std_supp:.1f}×")
-    print(f"Total runtime          : {total_time/60:.1f} minutes")
-    plt.figure(figsize=(10,6))
-    plt.hist(suppressions, bins=15, alpha=0.7, color='blue', edgecolor='black')
-    plt.axvline(mean_supp, color='red', linestyle='--', label=f'Mean = {mean_supp:.1f}×')
-    plt.title('Distribution of Suppression Factors (30 High-Res Realizations)')
-    plt.xlabel('Suppression Factor')
-    plt.ylabel('Count')
-    plt.legend()
-    plt.grid(True, alpha=0.3)
-    plt.tight_layout()
-    plt.savefig('plots/statistical_suppression_distribution_v5.png', dpi=400)
-    print("Plot saved: plots/statistical_suppression_distribution_v5.png")
-    return mean_delta, std_delta, mean_supp, std_supp
+        print(f"  {name} → δ={np.mean(deltas):.4f} | Supp={np.mean(suppressions):.1f}× | Time={(time.perf_counter()-start):.1f}s\n")
 
 if __name__ == "__main__":
-    print("Running simulation.py (v5.0 — high-res stochastic with timer + batching)")
-    run_statistical_campaign(start_batch=0)
-    print("\nFull campaign complete — project ready for final submission!")
+    print("simulation.py v5.4 — Full updated project")
+    run_resource_test_suite()
+    print("\nAll files updated to v7.5")
