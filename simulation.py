@@ -110,6 +110,19 @@ def multi_topological_weight(L, TB, Kh, SFT, Q, E, integral_Htop, worst_case_mod
     H_top += eps_t * E
     return 1 / (1 + alpha * H_top)
 
+def reconnect_filaments(filaments, Gamma_list, reconnect_dist=0.15):
+    new_filaments = [f.copy() for f in filaments]
+    new_Gamma = Gamma_list.copy()
+    for i in range(len(filaments)):
+        for j in range(i+1, len(filaments)):
+            dists = np.linalg.norm(filaments[i][:, np.newaxis] - filaments[j], axis=-1)
+            if np.min(dists) < reconnect_dist:
+                tail_i = new_filaments[i][-1].copy()
+                tail_j = new_filaments[j][-1].copy()
+                new_filaments[i][-1] = tail_j
+                new_filaments[j][-1] = tail_i
+    return new_filaments, new_Gamma
+
 def run_single_generic(with_depletion=True, worst_case_mode=False, integral_Htop=0.0):
     filaments, Gamma_list = generate_generic_data()
     linking_hist = []
@@ -119,6 +132,7 @@ def run_single_generic(with_depletion=True, worst_case_mode=False, integral_Htop
         t = step * dt
         t_hist.append(t)
         filaments = [adaptive_regrid(f) for f in filaments]
+        filaments, Gamma_list = reconnect_filaments(filaments, Gamma_list)
         L = compute_gauss_linking(filaments, Gamma_list)
         E = enstrophy_proxy(filaments, Gamma_list)
         TB, Kh, SFT, Q = dynamic_topological_proxies(filaments, L, E)
@@ -136,5 +150,5 @@ def run_single_generic(with_depletion=True, worst_case_mode=False, integral_Htop
     return np.array(t_hist), np.array(enstrophy_hist), np.array(linking_hist)
 
 if __name__ == "__main__":
-    print("simulation.py v5.5 — Triggered floor + Helicity Vacuum Paradox active")
+    print("simulation.py v5.6 — Triggered floor + Helicity Vacuum Paradox + Reconnection active")
     print("All files updated to v7.6")
