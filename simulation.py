@@ -5,6 +5,7 @@ import time
 
 os.makedirs('plots', exist_ok=True)
 
+# ==================== PARAMETERS ====================
 N_FIL = 512
 NUM_FILAMENTS = 12
 NUM_REALIZATIONS = 30
@@ -124,11 +125,12 @@ def reconnect_filaments(filaments, Gamma_list, reconnect_dist=0.15):
                 new_filaments[j][-1] = tail_i
     return new_filaments, new_Gamma
 
-def run_single_generic(with_depletion=True, worst_case_mode=False, integral_Htop=0.0):
+def run_single_generic(with_depletion=True, worst_case_mode=False):
     filaments, Gamma_list = generate_generic_data()
     linking_hist = []
     enstrophy_hist = []
     t_hist = []
+    integral_Htop = 0.0
     for step in range(steps):
         t = step * dt
         t_hist.append(t)
@@ -148,9 +150,45 @@ def run_single_generic(with_depletion=True, worst_case_mode=False, integral_Htop
             filaments[i] += dt * u_stoch[idx:idx+n] * scale
             idx += n
         enstrophy_hist.append(E)
+        integral_Htop += L * dt
     return np.array(t_hist), np.array(enstrophy_hist), np.array(linking_hist)
 
+def run_statistical_campaign():
+    deltas = []
+    suppressions = []
+    start_time = time.time()
+    for r in range(NUM_REALIZATIONS):
+        print(f"Running realization {r+1}/{NUM_REALIZATIONS}...")
+        t, E_with, L_with = run_single_generic(with_depletion=True)
+        t_no, E_without, L_without = run_single_generic(with_depletion=False)
+        delta = (L_with[-1] - L_with[0]) / (t[-1] * np.mean(E_with)) if np.mean(E_with) > 0 else 0.0
+        supp = np.max(E_without) / np.max(E_with) if np.max(E_with) > 0 else 1.0
+        deltas.append(delta)
+        suppressions.append(supp)
+        print(f"  δ={delta:.4f}, supp={supp:.1f}×")
+    mean_delta = np.mean(deltas)
+    std_delta = np.std(deltas)
+    mean_supp = np.mean(suppressions)
+    std_supp = np.std(suppressions)
+    elapsed = time.time() - start_time
+    print("\n=== STATISTICAL RESULTS (30 Realizations) ===")
+    print(f"Observed δ growth rate : {mean_delta:.4f} ± {std_delta:.4f}")
+    print(f"Theoretical lower bound: 0.0672")
+    print(f"Suppression factor : {mean_supp:.1f} ± {std_supp:.1f}×")
+    print(f"Total time: {elapsed:.1f} seconds")
+    plt.figure(figsize=(10,6))
+    plt.hist(suppressions, bins=15, alpha=0.7, color='blue', edgecolor='black')
+    plt.axvline(mean_supp, color='red', linestyle='--', label=f'Mean = {mean_supp:.1f}×')
+    plt.title('Distribution of Suppression Factors (30 Generic Realizations)')
+    plt.xlabel('Suppression Factor')
+    plt.ylabel('Count')
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+    plt.tight_layout()
+    plt.savefig('plots/statistical_suppression_distribution.png', dpi=400)
+    print("Plot saved: plots/statistical_suppression_distribution.png")
+    return mean_delta, std_delta, mean_supp, std_supp
+
 if __name__ == "__main__":
-    print("simulation.py v5.6 — Triggered floor + Helicity Vacuum Paradox + Reconnection")
-    t, E_with, L_with = run_single_generic(with_depletion=True, worst_case_mode=False)
-    print(f"Test run complete — Max enstrophy: {np.max(E_with):.2f}")
+    print("simulation.py v5.8 — Full 30-realization campaign active")
+    run_statistical_campaign()
