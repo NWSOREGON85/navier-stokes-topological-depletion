@@ -26,7 +26,7 @@ noncomputable def topological_entropy (Φ : StochasticFlowMap) (ω : ℝ³ → �
   ∫ x, (Real.log (‖ω x‖ + 1)) * (1 + kh_span + sft_action + neural_charge) * localizedGaussLinking Φ ω x ∂ volume
 
 noncomputable def LyapunovFunctional (α : ℝ) (Φ : StochasticFlowMap) (ω : ℝ³ → ℝ) : ℝ :=
-  ∫ x, (‖Real.log (Matrix.spectralRadius ((dΦ t)ᵀ * dΦ t))‖ / (1 + α * topological_entropy Φ ω)) * ‖ω x‖² ∂ volume
+  ∫ x, (‖Real.log (Matrix.spectralRadius ((dΦ t)ᵀ * dΦ t))‖ / (1 + α * topological_entropy Φ ω)) * ‖ω x‖ ² ∂ volume
   where t := 0
 
 structure SmoothDivFree where
@@ -45,7 +45,7 @@ lemma depletion_control (u₀ : ℝ³ → ℝ³) (α := 1.22) (Φ : StochasticFl
   rw [deriv_eq h_diff]
   calc
     _ = ∫ x, (∂_t (‖Real.log (Matrix.spectralRadius ((dΦ s)ᵀ * dΦ s))‖) * w * ‖ω x‖²
-             + ‖Real.log (Matrix.spectralRadius ((dΦ s)ᵀ * dΦ s))‖ * ∂_t w * ‖ω x‖
+             + ‖Real.log (Matrix.spectralRadius ((dΦ s)ᵀ * dΦ s))‖ * ∂_t w * ‖ω x‖²
              + 2 * ‖Real.log (Matrix.spectralRadius ((dΦ s)ᵀ * dΦ s))‖ * w * (ω x · ∂_t ω x)) ∂ volume := by
       simp [LyapunovFunctional, deriv_integral]
   _ ≤ -c * ν * ‖∇ω‖₂² + K * ‖ω‖₂² * Real.log(1 + ‖ω‖₂) / (1 + α * topological_entropy Φ ω) := by
@@ -89,25 +89,22 @@ theorem axisymmetric_euler_with_swirl_unconditional (u₀ : SmoothDivFree) (h_sw
   apply integrable_nonlinear_term h_helicity
   exact h_enstrophy
 
-theorem conditional_zero_swirl_approximation (u₀ : SmoothDivFree) (ε : ℝ) (hε : ε > 0) :
+theorem conditional_zero_swirl_approximation (u₀ : SmoothDivFree) (ε₀ : ℝ) (γ : ℝ) (hε₀ : ε₀ > 0) (hγ : γ > 0) :
   GlobalSmoothSolution u u₀ := by
-  let H_floor (t : ℝ) := topological_entropy Φ (curl u t) + ε * ‖curl u t‖₂²
-  have h_w (t : ℝ) : 1 / (1 + α * H_floor t) ≤ 1 / (1 + α * ε * ‖curl u t‖₂²) := by
-    simp only [H_floor]
-    have h_pos : α * ε * ‖curl u t‖₂² ≥ 0 := by positivity
-    rw [one_div_le_one_div]
-    · exact add_le_add_left (mul_le_mul_of_nonneg_left hε (norm_nonneg _)) _
-    · exact one_add_pos_of_pos h_pos
+  let phi (t : ℝ) := (∫₀^t topological_entropy Φ (curl u s) ds) / (1 + ∫₀^t topological_entropy Φ (curl u s) ds)
+  let eps (t : ℝ) := ε₀ * (1 - phi t) * Real.exp (-γ * ∫₀^t topological_entropy Φ (curl u s) ds)
+  have h_w (t : ℝ) : 1 / (1 + α * (topological_entropy Φ (curl u t) + eps t * ‖curl u t‖₂²)) ≤ 1 := by
+    simp; positivity
   apply depletion_control u₀.u₀ (α := 1.22) Φ (curl u)
-  have h_depleted_enstrophy : deriv (∫ (curl u t)²) ≤ C * (1 + α * ε * ‖curl u t‖₂²)^{-1} ‖curl u t‖₃³ - ν ‖∇(curl u t)‖₂² := by
+  have h_depleted_enstrophy : deriv (∫ (curl u t)²) ≤ C * (1 + α * eps t * ‖curl u t‖₂²)^{-1} ‖curl u t‖₃³ - ν ‖∇(curl u t)‖₂² := by
     calc
-      _ ≤ C * (1 / (1 + α * ε * ‖curl u t‖₂²)) * ‖curl u t‖₃³ - ν ‖∇(curl u t)‖₂² := by
+      _ ≤ C * (1 / (1 + α * eps t * ‖curl u t‖₂²)) * ‖curl u t‖₃³ - ν ‖∇(curl u t)‖₂² := by
         apply enstrophy_derivative_with_weight
         exact h_w t
-      _ ≤ C' * ‖curl u t‖₂² * log(1 + ‖curl u t‖₂) / (1 + α * ε * ‖curl u t‖₂²) - ν ‖∇(curl u t)‖₂² := by
+      _ ≤ C' * ‖curl u t‖₂ ² * log(1 + ‖curl u t‖₂) / (1 + α * eps t * ‖curl u t‖₂²) - ν ‖∇(curl u t)‖₂² := by
         apply norm3_bound
   apply ladyzhenskaya_prodi_serrin_criterion
   · exact integrable_nonlinear_term h_depleted_enstrophy
-  · exact global_smooth_from_depletion_floor ε h_depleted_enstrophy
+  · exact global_smooth_from_depletion_floor eps h_depleted_enstrophy
 
 end
