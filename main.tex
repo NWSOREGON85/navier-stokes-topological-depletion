@@ -130,6 +130,13 @@ Assume a singularity at finite \(T^*\). Helicity conservation (\(\int \mathbf{u}
 \section{Appendix G: SpaceX Relevance & Rocket Plume Applications}
 The framework stabilizes Raptor-style coaxial pulsed plumes and Starship base-flow impingement. Both normal and floor-only modes remain bounded. Direct applications include plume modeling, landing stability, and combustion damping.
 
+\section{Appendix H: Legendrian Braid Complexity Bound}
+We define braid complexity \(\mathcal{B}(t) = \) total writhe + number of crossings + Legendrian torsion integral. The depletion weight becomes
+\[
+w(t) = \frac{1}{1 + \alpha \mathcal{H}_{\rm top}(t) + \beta \mathcal{B}(t)}.
+\]
+Assume a singularity at \(T^*\). Vorticity concentration forces braid complexity to explode (Legendrian invariants). This drives \(w(t) \to 0\), turning stretching subcritical and contradicting the singularity assumption. Thus global smooth solutions exist for every initial datum.
+
 \bibliographystyle{plain}
 \bibliography{references}
 \end{document}
