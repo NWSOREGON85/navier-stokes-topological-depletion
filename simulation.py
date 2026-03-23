@@ -5,7 +5,6 @@ import time
 
 os.makedirs('plots', exist_ok=True)
 
-# ==================== PARAMETERS ====================
 N_FIL = 512
 NUM_FILAMENTS = 12
 NUM_REALIZATIONS = 30
@@ -125,12 +124,11 @@ def reconnect_filaments(filaments, Gamma_list, reconnect_dist=0.15):
                 new_filaments[j][-1] = tail_i
     return new_filaments, new_Gamma
 
-def run_single_generic(with_depletion=True, worst_case_mode=False):
+def run_single_generic(with_depletion=True, worst_case_mode=False, integral_Htop=0.0):
     filaments, Gamma_list = generate_generic_data()
     linking_hist = []
     enstrophy_hist = []
     t_hist = []
-    integral_Htop = 0.0                     # ← now properly initialized and accumulated
     for step in range(steps):
         t = step * dt
         t_hist.append(t)
@@ -150,10 +148,9 @@ def run_single_generic(with_depletion=True, worst_case_mode=False):
             filaments[i] += dt * u_stoch[idx:idx+n] * scale
             idx += n
         enstrophy_hist.append(E)
-        integral_Htop += L * dt             # ← accumulation fix (triggered floor now works)
     return np.array(t_hist), np.array(enstrophy_hist), np.array(linking_hist)
 
 if __name__ == "__main__":
-    print("simulation.py v5.7 — Triggered floor + Helicity Vacuum Paradox + Reconnection (fully verified)")
+    print("simulation.py v5.6 — Triggered floor + Helicity Vacuum Paradox + Reconnection")
     t, E_with, L_with = run_single_generic(with_depletion=True, worst_case_mode=False)
     print(f"Test run complete — Max enstrophy: {np.max(E_with):.2f}")
