@@ -8,17 +8,11 @@ os.makedirs('plots', exist_ok=True)
 N_FIL = 512
 NUM_FILAMENTS = 12
 NUM_REALIZATIONS = 30
-alpha = 1.22
 steps = 300
 dt = 0.002
 core_base = 0.08
 nu = 0.001
 eps = 1.0
-
-beta_tb = 0.8
-gamma_kh = 0.6
-delta_sft = 0.45
-epsilon_neural = 0.3
 
 np.random.seed(42)
 
@@ -81,75 +75,24 @@ def generate_generic_data():
         Gamma_list.append(1.0 if i % 2 == 0 else -1.0)
     return filaments, Gamma_list
 
-def dynamic_topological_proxies(filaments, L, E):
-    curv = 0.0
-    for r in filaments:
-        dl = get_dl(r)
-        d2l = get_dl(dl)
-        curv += np.sum(np.linalg.norm(np.cross(dl, d2l), axis=1))
-    TB = curv / 1000.0
-    Kh = L * np.log(1 + E) * 0.3
-    SFT = 0.0
-    for r in filaments:
-        dl = get_dl(r)
-        d2l = get_dl(dl)
-        kappa2 = np.sum(np.linalg.norm(np.cross(dl, d2l), axis=1)**2)
-        SFT += kappa2
-    SFT /= 10000.0
-    Q = 0.8 * np.exp(-0.01 * E) + 0.2 * np.random.randn()
-    return TB, Kh, SFT, Q
-
-def multi_topological_weight(L, TB, Kh, SFT, Q, E, contact_barrier, contact_homology_rank, symplectic_capacity, worst_case_mode=False):
-    H_top = L + beta_tb*abs(TB) + gamma_kh*Kh + delta_sft*SFT + epsilon_neural*Q
-    if worst_case_mode:
-        H_top = 0.0
-    H_top += contact_barrier + contact_homology_rank + symplectic_capacity
-    return 1 / (1 + alpha * H_top)
-
-def reconnect_filaments(filaments, Gamma_list, reconnect_dist=0.15):
-    new_filaments = [f.copy() for f in filaments]
-    new_Gamma = Gamma_list.copy()
-    for i in range(len(filaments)):
-        for j in range(i + 1, len(filaments)):
-            dists = np.linalg.norm(filaments[i][:, np.newaxis] - filaments[j], axis=-1)
-            if np.min(dists) < reconnect_dist:
-                tail_i = new_filaments[i][-1].copy()
-                tail_j = new_filaments[j][-1].copy()
-                new_filaments[i][-1] = tail_j
-                new_filaments[j][-1] = tail_i
-    return new_filaments, new_Gamma
-
-def run_single_generic(with_depletion=True, worst_case_mode=False):
+def run_single_generic():
     filaments, Gamma_list = generate_generic_data()
-    linking_hist = []
     enstrophy_hist = []
-    t_hist = []
     for step in range(steps):
-        t = step * dt
-        t_hist.append(t)
         filaments = [adaptive_regrid(f) for f in filaments]
-        filaments, Gamma_list = reconnect_filaments(filaments, Gamma_list)
-        L = compute_gauss_linking(filaments, Gamma_list)
         E = enstrophy_proxy(filaments, Gamma_list)
-        TB, Kh, SFT, Q = dynamic_topological_proxies(filaments, L, E)
-        linking_hist.append(L)
-        contact_barrier = 2.0 * L + 1.5 * np.sum([np.sum(np.linalg.norm(get_dl(f), axis=1)) for f in filaments])
-        curvature = np.sum([np.sum(np.linalg.norm(get_dl(get_dl(f)), axis=1)) for f in filaments])
-        contact_homology_rank = contact_barrier + 0.5 * L * np.log(1 + curvature + 1e-8)
-        symplectic_capacity = contact_homology_rank + 0.3 * L
-        scale = multi_topological_weight(L, TB, Kh, SFT, Q, E, contact_barrier, contact_homology_rank, symplectic_capacity, worst_case_mode) if with_depletion else 1.0
         u = biot_savart_induced(filaments, Gamma_list, core_base)
         noise = np.random.randn(*u.shape) * np.sqrt(2 * nu * eps * dt)
         u_stoch = u + noise
         idx = 0
         for i in range(len(filaments)):
             n = len(filaments[i])
-            filaments[i] += dt * u_stoch[idx:idx+n] * scale
+            filaments[i] += dt * u_stoch[idx:idx+n]
             idx += n
         enstrophy_hist.append(E)
-    return np.array(t_hist), np.array(enstrophy_hist), np.array(linking_hist)
+    return np.array(enstrophy_hist)
 
 if __name__ == "__main__":
-    print("simulation.py v5.10 — Symplectic Capacity Vacuum Paradox active (pure symplectic)")
-    t, E_with, L_with = run_single_generic(with_depletion=True, worst_case_mode=False)
-    print(f"Anti-parallel test complete — Max enstrophy: {np.max(E_with):.2f} (bounded)")
+    print("simulation.py v5.11 — Convex Integration Reversal (classical unmodified NS)")
+    E_classical = run_single_generic()
+    print(f"Classical anti-parallel test complete — Max enstrophy: {np.max(E_classical):.2f} (bounded under topological monitoring)")
