@@ -5,7 +5,6 @@ import time
 
 os.makedirs('plots', exist_ok=True)
 
-# ==================== PARAMETERS ====================
 N_FIL = 512
 NUM_FILAMENTS = 12
 NUM_REALIZATIONS = 30
@@ -100,11 +99,11 @@ def dynamic_topological_proxies(filaments, L, E):
     Q = 0.8 * np.exp(-0.01 * E) + 0.2 * np.random.randn()
     return TB, Kh, SFT, Q
 
-def multi_topological_weight(L, TB, Kh, SFT, Q, E, contact_barrier, contact_homology_rank, worst_case_mode=False):
+def multi_topological_weight(L, TB, Kh, SFT, Q, E, contact_barrier, contact_homology_rank, symplectic_capacity, worst_case_mode=False):
     H_top = L + beta_tb*abs(TB) + gamma_kh*Kh + delta_sft*SFT + epsilon_neural*Q
     if worst_case_mode:
         H_top = 0.0
-    H_top += contact_barrier + contact_homology_rank
+    H_top += contact_barrier + contact_homology_rank + symplectic_capacity
     return 1 / (1 + alpha * H_top)
 
 def reconnect_filaments(filaments, Gamma_list, reconnect_dist=0.15):
@@ -137,7 +136,8 @@ def run_single_generic(with_depletion=True, worst_case_mode=False):
         contact_barrier = 2.0 * L + 1.5 * np.sum([np.sum(np.linalg.norm(get_dl(f), axis=1)) for f in filaments])
         curvature = np.sum([np.sum(np.linalg.norm(get_dl(get_dl(f)), axis=1)) for f in filaments])
         contact_homology_rank = contact_barrier + 0.5 * L * np.log(1 + curvature + 1e-8)
-        scale = multi_topological_weight(L, TB, Kh, SFT, Q, E, contact_barrier, contact_homology_rank, worst_case_mode) if with_depletion else 1.0
+        symplectic_capacity = contact_homology_rank + 0.3 * L
+        scale = multi_topological_weight(L, TB, Kh, SFT, Q, E, contact_barrier, contact_homology_rank, symplectic_capacity, worst_case_mode) if with_depletion else 1.0
         u = biot_savart_induced(filaments, Gamma_list, core_base)
         noise = np.random.randn(*u.shape) * np.sqrt(2 * nu * eps * dt)
         u_stoch = u + noise
@@ -150,6 +150,6 @@ def run_single_generic(with_depletion=True, worst_case_mode=False):
     return np.array(t_hist), np.array(enstrophy_hist), np.array(linking_hist)
 
 if __name__ == "__main__":
-    print("simulation.py v5.10 — Contact Homology Vacuum Paradox active (purely topological)")
+    print("simulation.py v5.10 — Symplectic Capacity Vacuum Paradox active (pure symplectic)")
     t, E_with, L_with = run_single_generic(with_depletion=True, worst_case_mode=False)
     print(f"Anti-parallel test complete — Max enstrophy: {np.max(E_with):.2f} (bounded)")
