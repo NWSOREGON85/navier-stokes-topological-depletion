@@ -26,7 +26,7 @@ noncomputable def topological_entropy (Φ : StochasticFlowMap) (ω : ℝ³ → �
   ∫ x, (Real.log (‖ω x‖ + 1)) * (1 + kh_span + sft_action + neural_charge) * localizedGaussLinking Φ ω x ∂ volume
 
 noncomputable def LyapunovFunctional (α : ℝ) (Φ : StochasticFlowMap) (ω : ℝ³ → ℝ) : ℝ :=
-  ∫ x, (‖Real.log (Matrix.spectralRadius ((dΦ t)ᵀ * dΦ t))‖ / (1 + α * topological_entropy Φ ω)) * ‖ω x‖ ² ∂ volume
+  ∫ x, (‖Real.log (Matrix.spectralRadius ((dΦ t)ᵀ * dΦ t))‖ / (1 + α * topological_entropy Φ ω)) * ‖ω x‖² ∂ volume
   where t := 0
 
 structure SmoothDivFree where
@@ -101,7 +101,7 @@ theorem conditional_zero_swirl_approximation (u₀ : SmoothDivFree) (ε₀ : ℝ
       _ ≤ C * (1 / (1 + α * eps t * ‖curl u t‖₂²)) * ‖curl u t‖₃³ - ν ‖∇(curl u t)‖₂² := by
         apply enstrophy_derivative_with_weight
         exact h_w t
-      _ ≤ C' * ‖curl u t‖₂ ² * log(1 + ‖curl u t‖₂) / (1 + α * eps t * ‖curl u t‖₂²) - ν ‖∇(curl u t)‖₂² := by
+      _ ≤ C' * ‖curl u t‖₂² * log(1 + ‖curl u t‖₂) / (1 + α * eps t * ‖curl u t‖₂²) - ν ‖∇(curl u t)‖₂² := by
         apply norm3_bound
   apply ladyzhenskaya_prodi_serrin_criterion
   · exact integrable_nonlinear_term h_depleted_enstrophy
