@@ -5,7 +5,6 @@ import time
 
 os.makedirs('plots', exist_ok=True)
 
-# ==================== PARAMETERS (v5.5 - Triggered Floor) ====================
 N_FIL = 512
 NUM_REALIZATIONS = 30
 BATCH_SIZE = 10
@@ -137,5 +136,5 @@ def run_single_generic(with_depletion=True, worst_case_mode=False, integral_Htop
     return np.array(t_hist), np.array(enstrophy_hist), np.array(linking_hist)
 
 if __name__ == "__main__":
-    print("simulation.py v5.5 — Triggered floor active")
+    print("simulation.py v5.5 — Triggered floor + Helicity Vacuum Paradox active")
     print("All files updated to v7.6")
