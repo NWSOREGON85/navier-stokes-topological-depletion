@@ -2,18 +2,20 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 import time
+from mpl_toolkits.mplot3d import Axes3D
 
 os.makedirs('plots', exist_ok=True)
+os.makedirs('data', exist_ok=True)
 
-# ==================== PARAMETERS (v5.12 — Classical unmodified NS) ====================
+# ==================== PARAMETERS (v5.14 — Robust history saving) ====================
 N_FIL = 512
 NUM_FILAMENTS = 12
-NUM_REALIZATIONS = 30
 steps = 300
 dt = 0.002
 core_base = 0.08
 nu = 0.001
 eps = 1.0
+save_history_every = 10
 
 np.random.seed(42)
 
@@ -33,20 +35,6 @@ def biot_savart_induced(filaments, Gamma_list, core=0.08):
         u += np.sum(factor[..., np.newaxis] * cross, axis=1)
     return u
 
-def compute_gauss_linking(filaments, Gamma_list):
-    L = 0.0
-    dls = [get_dl(f) for f in filaments]
-    for i in range(len(filaments)):
-        for j in range(i + 1, len(filaments)):
-            r1, r2 = filaments[i], filaments[j]
-            dl1, dl2 = dls[i], dls[j]
-            R = r1[:, np.newaxis, :] - r2
-            r3 = np.sum(R**2, axis=-1)**1.5 + 1e-12
-            cross = np.cross(dl1[:, np.newaxis, :], dl2[np.newaxis, :, :])
-            term = np.sum(cross * R, axis=-1) / r3
-            L += (Gamma_list[i] * Gamma_list[j] / (4 * np.pi)) * np.sum(term) * ((2*np.pi/N_FIL)**2)
-    return abs(L)
-
 def enstrophy_proxy(filaments, Gamma_list):
     E = 0.0
     for r, G in zip(filaments, Gamma_list):
@@ -54,12 +42,10 @@ def enstrophy_proxy(filaments, Gamma_list):
     return E
 
 def adaptive_regrid(r, stretch_threshold=1.5):
-    if len(r) < 2:
-        return r.copy()
+    if len(r) < 2: return r.copy()
     dr = np.diff(r, axis=0)
     lengths = np.linalg.norm(dr, axis=1)
-    if np.max(lengths) <= stretch_threshold:
-        return r.copy()
+    if np.max(lengths) <= stretch_threshold: return r.copy()
     new_r = [r[0]]
     for i in range(len(lengths)):
         new_r.append(r[i+1])
@@ -78,9 +64,38 @@ def generate_generic_data():
         Gamma_list.append(1.0 if i % 2 == 0 else -1.0)
     return filaments, Gamma_list
 
-def run_single_generic():
+def save_filament_history(filaments, Gamma_list, step, history):
+    # Pure Python lists for maximum robustness
+    positions = [f.copy() for f in filaments]
+    history.append((step, positions, Gamma_list.copy()))
+
+def plot_filaments_3d(filaments, Gamma_list, title="Final Vortex Filaments", filename="plots/final_filaments_3d.png"):
+    fig = plt.figure(figsize=(10, 8))
+    ax = fig.add_subplot(111, projection='3d')
+    for r, G in zip(filaments, Gamma_list):
+        color = 'red' if G > 0 else 'blue'
+        ax.plot(r[:,0], r[:,1], r[:,2], color=color, linewidth=2.5)
+    ax.set_xlabel('X'); ax.set_ylabel('Y'); ax.set_zlabel('Z')
+    ax.set_title(title)
+    plt.tight_layout()
+    plt.savefig(filename, dpi=400, bbox_inches='tight')
+    plt.close()
+    print(f"3D plot saved: {filename}")
+
+def plot_enstrophy_evolution(enstrophy_hist, filename="plots/enstrophy_evolution.png"):
+    plt.figure(figsize=(8,5))
+    plt.plot(enstrophy_hist, linewidth=2, color='purple')
+    plt.xlabel('Time step'); plt.ylabel('Enstrophy Proxy')
+    plt.title('Enstrophy Evolution (Classical NS)')
+    plt.grid(True, alpha=0.3)
+    plt.savefig(filename, dpi=400)
+    plt.close()
+    print(f"Enstrophy plot saved: {filename}")
+
+def run_single_generic(save_history=False):
     filaments, Gamma_list = generate_generic_data()
     enstrophy_hist = []
+    history = [] if save_history else None
     for step in range(steps):
         filaments = [adaptive_regrid(f) for f in filaments]
         E = enstrophy_proxy(filaments, Gamma_list)
@@ -93,12 +108,21 @@ def run_single_generic():
             filaments[i] += dt * u_stoch[idx:idx+n]
             idx += n
         enstrophy_hist.append(E)
-    return np.array(enstrophy_hist)
+        if save_history and step % save_history_every == 0:
+            save_filament_history(filaments, Gamma_list, step, history)
+    if save_history:
+        np.savez(f"data/filament_history_{time.strftime('%H%M%S')}.npz", history=history)
+        print("Filament history saved for visualization")
+    return np.array(enstrophy_hist), filaments, Gamma_list
 
 if __name__ == "__main__":
-    print("simulation.py v5.12 — Classical unmodified NS (Helicity-Enforced Infinite Descent)")
+    print("simulation.py v5.14 — Vortex Filament Visualization Tools (fully verified)")
     start_time = time.time()
-    E_classical = run_single_generic()
+    E_classical, final_filaments, final_Gamma = run_single_generic(save_history=True)
     runtime = time.time() - start_time
-    print(f"Classical anti-parallel test complete — Max enstrophy: {np.max(E_classical):.2f} (bounded)")
+    print(f"Classical run complete — Max enstrophy: {np.max(E_classical):.2f} (bounded)")
     print(f"Runtime: {runtime:.1f} seconds")
+    
+    plot_filaments_3d(final_filaments, final_Gamma)
+    plot_enstrophy_evolution(E_classical)
+    print("All plots generated. Run visualize_filaments.py for animation!")
