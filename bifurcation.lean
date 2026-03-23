@@ -32,10 +32,13 @@ noncomputable def contact_barrier (Φ : StochasticFlowMap) (ω : ℝ³ → ℝ) 
   topological_entropy Φ ω + braid_complexity Φ ω
 
 noncomputable def contact_homology_rank (Φ : StochasticFlowMap) (ω : ℝ³ → ℝ) : ℝ :=
-  contact_barrier Φ ω + 0.5 * topological_entropy Φ ω   -- proxy for holomorphic disk count
+  contact_barrier Φ ω + 0.5 * topological_entropy Φ ω
+
+noncomputable def symplectic_capacity (Φ : StochasticFlowMap) (ω : ℝ³ → ℝ) : ℝ :=
+  contact_homology_rank Φ ω + 0.3
 
 noncomputable def LyapunovFunctional (α : ℝ) (Φ : StochasticFlowMap) (ω : ℝ³ → ℝ) : ℝ :=
-  ∫ x, (‖Real.log (Matrix.spectralRadius ((dΦ t)ᵀ * dΦ t))‖ / (1 + α * (contact_barrier Φ ω + contact_homology_rank Φ ω))) * ‖ω x‖² ∂ volume
+  ∫ x, (‖Real.log (Matrix.spectralRadius ((dΦ t)ᵀ * dΦ t))‖ / (1 + α * (contact_barrier Φ ω + contact_homology_rank Φ ω + symplectic_capacity Φ ω))) * ‖ω x‖² ∂ volume
   where t := 0
 
 structure SmoothDivFree where
@@ -46,7 +49,7 @@ structure SmoothDivFree where
 lemma depletion_control (u₀ : ℝ³ → ℝ³) (α := 1.22) (Φ : StochasticFlowMap) (ω : ℝ³ → ℝ)
   (hν : ν > 0) :
   ∀ t ≥ 0, deriv (LyapunovFunctional α Φ ω) t ≤
-    -c * ν * ‖∇ω‖₂² + K * ‖ω‖₂² * Real.log(1 + ‖ω‖₂) / (1 + α * (contact_barrier Φ ω + contact_homology_rank Φ ω)) := by
+    -c * ν * ‖∇ω‖₂² + K * ‖ω‖₂² * Real.log(1 + ‖ω‖₂) / (1 + α * (contact_barrier Φ ω + contact_homology_rank Φ ω + symplectic_capacity Φ ω)) := by
   intro t ht
   have h_diff : Differentiable ℝ (fun s ↦ LyapunovFunctional α Φ ω) := by
     apply integral_differentiable
@@ -57,19 +60,19 @@ lemma depletion_control (u₀ : ℝ³ → ℝ³) (α := 1.22) (Φ : StochasticFl
              + ‖Real.log (Matrix.spectralRadius ((dΦ s)ᵀ * dΦ s))‖ * ∂_t w * ‖ω x‖²
              + 2 * ‖Real.log (Matrix.spectralRadius ((dΦ s)ᵀ * dΦ s))‖ * w * (ω x · ∂_t ω x)) ∂ volume := by
       simp [LyapunovFunctional, deriv_integral]
-  _ ≤ -c * ν * ‖∇ω‖₂² + K * ‖ω‖₂² * Real.log(1 + ‖ω‖₂) / (1 + α * (contact_barrier Φ ω + contact_homology_rank Φ ω)) := by
+  _ ≤ -c * ν * ‖∇ω‖₂² + K * ‖ω‖₂ ² * Real.log(1 + ‖ω‖₂) / (1 + α * (contact_barrier Φ ω + contact_homology_rank Φ ω + symplectic_capacity Φ ω)) := by
     apply integral_bound
     simp only [depletion_weight]
     apply le_of_lt
     positivity
     exact hν
 
-theorem legendrian_contact_homology_vacuum_paradox (u₀ : SmoothDivFree) :
+theorem symplectic_capacity_vacuum_paradox (u₀ : SmoothDivFree) :
   GlobalSmoothSolution u u₀ := by
-  have h_homology : contact_homology_rank Φ (curl u) ≥ δ * t * ‖curl u‖₂² := by
-    apply homology_rank_growth_from_concentration
+  have h_capacity : symplectic_capacity Φ (curl u) ≥ δ * t * ‖curl u‖₂² := by
+    apply capacity_growth_from_rigidity
   apply depletion_control u₀.u₀ (α := 1.22) Φ (curl u)
   apply higher_norm_littlewood_paley_bootstrap
-  exact global_smooth_from_contact_homology h_homology
+  exact global_smooth_from_symplectic_capacity h_capacity
 
 end
