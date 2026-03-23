@@ -5,6 +5,7 @@ import time
 
 os.makedirs('plots', exist_ok=True)
 
+# ==================== PARAMETERS (v5.6 - Triggered Floor + Reconnection) ====================
 N_FIL = 512
 NUM_REALIZATIONS = 30
 BATCH_SIZE = 10
@@ -114,7 +115,7 @@ def reconnect_filaments(filaments, Gamma_list, reconnect_dist=0.15):
     new_filaments = [f.copy() for f in filaments]
     new_Gamma = Gamma_list.copy()
     for i in range(len(filaments)):
-        for j in range(i+1, len(filaments)):
+        for j in range(i + 1, len(filaments)):
             dists = np.linalg.norm(filaments[i][:, np.newaxis] - filaments[j], axis=-1)
             if np.min(dists) < reconnect_dist:
                 tail_i = new_filaments[i][-1].copy()
@@ -150,5 +151,7 @@ def run_single_generic(with_depletion=True, worst_case_mode=False, integral_Htop
     return np.array(t_hist), np.array(enstrophy_hist), np.array(linking_hist)
 
 if __name__ == "__main__":
-    print("simulation.py v5.6 — Triggered floor + Helicity Vacuum Paradox + Reconnection active")
-    print("All files updated to v7.6")
+    print("simulation.py v5.6 — Triggered floor + Helicity Vacuum Paradox + Reconnection")
+    print("Running a quick test run...")
+    t, E_with, L_with = run_single_generic(with_depletion=True, worst_case_mode=False)
+    print(f"Test complete — Max enstrophy: {np.max(E_with):.2f}")
