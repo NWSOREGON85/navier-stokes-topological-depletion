@@ -5,6 +5,7 @@ import time
 
 os.makedirs('plots', exist_ok=True)
 
+# ==================== PARAMETERS (v5.12 — Classical unmodified NS) ====================
 N_FIL = 512
 NUM_FILAMENTS = 12
 NUM_REALIZATIONS = 30
@@ -53,10 +54,12 @@ def enstrophy_proxy(filaments, Gamma_list):
     return E
 
 def adaptive_regrid(r, stretch_threshold=1.5):
-    if len(r) < 2: return r.copy()
+    if len(r) < 2:
+        return r.copy()
     dr = np.diff(r, axis=0)
     lengths = np.linalg.norm(dr, axis=1)
-    if np.max(lengths) <= stretch_threshold: return r.copy()
+    if np.max(lengths) <= stretch_threshold:
+        return r.copy()
     new_r = [r[0]]
     for i in range(len(lengths)):
         new_r.append(r[i+1])
@@ -93,6 +96,9 @@ def run_single_generic():
     return np.array(enstrophy_hist)
 
 if __name__ == "__main__":
-    print("simulation.py v5.12 — Renormalization Group Topological Budget Theorem (classical unmodified NS)")
+    print("simulation.py v5.12 — Classical unmodified NS (Helicity-Enforced Infinite Descent)")
+    start_time = time.time()
     E_classical = run_single_generic()
+    runtime = time.time() - start_time
     print(f"Classical anti-parallel test complete — Max enstrophy: {np.max(E_classical):.2f} (bounded)")
+    print(f"Runtime: {runtime:.1f} seconds")
